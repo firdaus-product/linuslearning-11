@@ -1,337 +1,441 @@
 <!DOCTYPE html>
 <html lang="ms-MY">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Kemahiran Pemulihan: Asas Tambah (Pembelajaran)</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  body{ box-sizing:border-box; }
-  .card{ @apply bg-white rounded-xl shadow-lg; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pemulihan: Asas Tambah (Pembelajaran)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-  /* ---------- DOMINO (fix overlap + precise count) ---------- */
-  .domino{
-    width:180px;height:100px;
-    border:4px solid #4b5563;border-radius:18px;background:#fff;
-    display:grid;grid-template-columns:1fr 1fr;overflow:hidden;
-    box-shadow:0 6px 14px rgba(0,0,0,.12);
-  }
-  .domino .face{
-    display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
-    align-items:center;justify-items:center;padding:10px;
-  }
-  .domino .face.left { border-right:6px solid #4b5563; padding-right:14px; }
-  .domino .face.right{ padding-left:14px; }
-  .pip{ width:12px;height:12px;border-radius:9999px; }
-  .pip.black{ background:#111827; }  /* kiri */
-  .pip.red{ background:#ef4444; }    /* kanan */
-  .domino[draggable="true"]{ cursor:grab; }
-  .domino.dragging{ opacity:.6; transform:scale(.98); cursor:grabbing; }
+  <style>
+    /* --- UI STYLE (MASTER REFERENCE - TEMA HIJAU) --- */
+    body { 
+        font-family: 'Fredoka', sans-serif; 
+        background-color: #f0fdf4; 
+        background-image: radial-gradient(#86efac 2px, transparent 2px); 
+        background-size: 30px 30px; 
+    }
+    
+    .game-card { 
+        background: white; 
+        border: 4px solid #475569; 
+        box-shadow: 8px 8px 0px #00000020; 
+        border-radius: 1.5rem; 
+        min-height: 600px; 
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    /* Buttons */
+    .btn-3d { 
+        transition: all 0.1s; 
+        border-bottom-width: 6px; 
+        border-color: rgba(0,0,0,0.2); 
+        transform: translateY(0); 
+        cursor: pointer; 
+        display: inline-block; 
+    }
+    .btn-3d:active:not(:disabled) { transform: translateY(4px); border-bottom-width: 2px; box-shadow: none; }
+    .btn-3d:disabled { opacity: 0.6; cursor: not-allowed; border-bottom-width: 6px; filter: grayscale(100%); }
 
-  /* umum */
-  .dropzone-dashed{ border:4px dashed #94a3b8; }
-  .bounce{ animation:b .5s ease-in-out; }
-  @keyframes b{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-</style>
+    /* Animation */
+    .shake { animation: shake 0.4s ease-in-out; border-color: #ef4444 !important; background-color: #fee2e2 !important; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px) rotate(-5deg); } 75% { transform: translateX(8px) rotate(5deg); } }
+    .bounce { animation: b .5s ease-in-out; }
+    @keyframes b{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+    /* --- STYLE KHUSUS AKTIVITI INI --- */
+
+    /* Domino Styles */
+    .domino {
+        width: 160px; height: 90px;
+        border: 4px solid #475569; border-radius: 12px; background: #fff;
+        display: grid; grid-template-columns: 1fr 1fr; overflow: hidden;
+        box-shadow: 4px 4px 0 rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .domino:active { transform: scale(0.95); }
+    .domino .face {
+        display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
+        align-items: center; justify-items: center; padding: 6px;
+    }
+    .domino .face.left { border-right: 4px solid #475569; background-color: #f8fafc; }
+    .domino .face.right { background-color: #fff; }
+    .pip { width: 10px; height: 10px; border-radius: 999px; }
+    .pip.black { background: #1e293b; } 
+    .pip.red { background: #ef4444; }
+
+    /* Drop Zones */
+    .dropzone-dashed { border: 4px dashed #cbd5e1; background: #f1f5f9; border-radius: 1rem; transition: all 0.3s; }
+    .dropzone-dashed.drag-over { background: #dbeafe; border-color: #3b82f6; }
+
+    /* Grid 100 Scrollable Area */
+    .grid-scroll-container {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 10px;
+        border-radius: 1rem;
+        border: 2px solid #e2e8f0;
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
-  <main class="container mx-auto max-w-6xl p-4">
-    <!-- Header -->
-    <header class="text-center mb-4">
-      <h1 class="text-3xl md:text-4xl font-extrabold text-purple-800">
-        🧮 Kemahiran Pemulihan: Asas Tambah (Pembelajaran)
-      </h1>
-      <p class="text-slate-600 mt-1">Untuk murid 5–9 tahun · Tiada soalan/markah — hanya penerangan & penerokaan</p>
-    </header>
+<body class="min-h-screen text-slate-800 pb-10">
 
-    <!-- Info Bar -->
-    <section class="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-lg shadow-sm mb-5 flex items-center justify-between">
+  <div class="fixed top-4 left-0 right-0 z-50 px-4 pointer-events-none">
+    <div class="max-w-4xl mx-auto bg-green-400 border-4 border-green-600 rounded-full px-6 py-3 shadow-xl flex items-center justify-between pointer-events-auto transform hover:scale-[1.01] transition-transform">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">💡</span>
-        <p id="info" class="text-lg font-medium text-slate-800">Klik butang aktiviti di bawah untuk mula.</p>
+        <span class="text-3xl animate-bounce">💡</span>
+        <span id="info-text" class="text-xl font-bold text-green-900 leading-none mt-1">Asas Tambah: Pembelajaran</span>
       </div>
-      <button id="speakBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-xl">🔊</button>
-    </section>
+      <button id="speak-btn" onclick="speakInfo()" class="bg-white hover:bg-green-50 text-green-600 border-2 border-green-200 rounded-full p-2 transition-colors shadow-sm">🔊</button>
+    </div>
+  </div>
+  <div class="h-24"></div>
 
-    <!-- Stage -->
-    <section id="stage" class="card p-6 min-h-[360px] flex items-center justify-center text-center">
-      <div>
-        <div class="text-6xl mb-3">🎯</div>
-        <h2 class="text-2xl font-bold text-slate-800">Pilih aktiviti untuk mula belajar!</h2>
-        <p class="text-slate-600 mt-2">Semua aktiviti berbentuk pembelajaran/penjelasan — tiada “betul/salah”.</p>
-      </div>
-    </section>
-
-    <!-- Controls -->
-    <section class="mt-5">
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-        <button onclick="start(1)" class="bg-sky-600 hover:bg-sky-700 text-white rounded-lg py-3 font-semibold">
-          🧭 Aktiviti 1<br><span class="text-xs font-normal">Urutan & “Lebih Satu”</span>
-        </button>
-        <button onclick="start(2)" class="bg-green-600 hover:bg-green-700 text-white rounded-lg py-3 font-semibold">
-          🧵 Aktiviti 2<br><span class="text-xs font-normal">Kotak Manik (Penambahan)</span>
-        </button>
-        <button onclick="start(3)" class="bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-lg py-3 font-semibold">
-          👨‍👩‍👧 Aktiviti 3<br><span class="text-xs font-normal">Keluarga Jumlah</span>
-        </button>
-        <button onclick="start(4)" class="bg-orange-600 hover:bg-orange-700 text-white rounded-lg py-3 font-semibold">
-          🎲 Aktiviti 4<br><span class="text-xs font-normal">Domino Tambah</span>
-        </button>
-        <button onclick="start(5)" class="bg-amber-600 hover:bg-amber-700 text-white rounded-lg py-3 font-semibold">
-          🔢 Aktiviti 5<br><span class="text-xs font-normal">Kad Petak 100</span>
-        </button>
-      </div>
-
-      <div class="flex justify-center gap-3 mt-4">
-        <button onclick="resetStage()" class="bg-slate-500 hover:bg-slate-600 text-white px-5 py-2 rounded-lg font-semibold">🧽 Bersih</button>
-        <button onclick="nextStep()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold">➡️ Seterusnya</button>
-      </div>
-    </section>
-  </main>
-
-<script>
-/* -------------------- TTS helper -------------------- */
-let ttsUnlocked = false, utt = null;
-function speak(txt){ if(!ttsUnlocked) return;
-  if(utt) speechSynthesis.cancel();
-  setTimeout(()=>{
-    utt = new SpeechSynthesisUtterance(txt);
-    utt.lang = 'ms-MY'; utt.rate=.9; utt.pitch=1.1;
-    const v = speechSynthesis.getVoices().find(v=>/ms|MY/i.test(v.lang));
-    if(v) utt.voice = v;
-    speechSynthesis.speak(utt);
-  },100);
-}
-document.addEventListener('click',()=>{ if(!ttsUnlocked){ speechSynthesis.speak(new SpeechSynthesisUtterance('')); ttsUnlocked=true; }},{once:true});
-document.getElementById('speakBtn').onclick = ()=>speak(document.getElementById('info').textContent);
-const info = (t)=>{ document.getElementById('info').textContent=t; };
-
-/* -------------------- State -------------------- */
-let cur=0, step=0;
-function start(n){ cur=n; step=0; [act1,act2,act3,act4,act5][n-1](); }
-function nextStep(){ if(!cur){ info('Pilih aktiviti dahulu.'); return; } step++; start(cur); }
-function resetStage(){
-  cur=0; step=0;
-  document.getElementById('stage').innerHTML = `
-    <div>
-      <div class="text-6xl mb-3">🎯</div>
-      <h2 class="text-2xl font-bold text-slate-800">Pilih aktiviti untuk mula belajar!</h2>
-      <p class="text-slate-600 mt-2">Semua aktiviti berbentuk pembelajaran/penjelasan — tiada “betul/salah”.</p>
-    </div>`;
-  info('Klik butang aktiviti di bawah untuk mula.');
-}
-
-/* -------------------- Aktiviti 1: Urutan & “Lebih Satu” -------------------- */
-function act1(){
-  const n = 11 + (step % 10); // 11–20
-  const ticks = Array.from({length:10},(_,i)=>11+i).map(x=>`<span class="w-10 text-center text-sm">${x}</span>`).join('');
-  document.getElementById('stage').innerHTML = `
-    <div class="w-full">
-      <h2 class="text-2xl font-bold text-blue-800 mb-2">🧭 Urutan Nombor 11–20</h2>
-      <p class="text-slate-600 mb-4">Gerakkan peluncur. Sistem membaca nombor sahaja; tekan “Baca Penerangan” untuk huraian.</p>
-
-      <div class="card p-5">
-        <input id="sl" type="range" min="11" max="20" value="${n}" class="w-full accent-blue-600"/>
-        <div class="flex justify-between mt-2 text-slate-500">${ticks}</div>
-
-        <div class="mt-6 text-center">
-          <div class="text-5xl font-extrabold">${n}</div>
-          <div class="mt-3 flex gap-3 justify-center">
-            <button id="sNum" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">🔉 Sebut Nombor</button>
-            <button id="sDesc" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg">📖 Baca Penerangan</button>
-          </div>
+  <div class="max-w-6xl mx-auto p-4">
+    
+    <div class="game-card p-8 mb-8">
+        <div id="activity-content" class="w-full relative z-10 flex flex-col items-center justify-center h-full transition-opacity duration-200">
+            <div class="py-10 text-center">
+                <div class="text-8xl mb-6 animate-pulse">👩‍🏫</div>
+                <h2 class="text-5xl font-bold text-emerald-600 mb-4">Belajar Menambah</h2>
+                <p class="text-2xl text-slate-500 mb-8 font-semibold">Tiada markah. Hanya penerokaan.</p>
+                <div class="text-4xl animate-bounce">👇</div>
+            </div>
         </div>
+    </div>
+
+    <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg p-6 border-2 border-white">
+      <h3 class="text-2xl font-bold text-slate-700 mb-4 text-center">🎮 Pilih Aktiviti</h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <button onclick="loadActivity(1)" class="btn-3d bg-sky-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🧭 Urutan Nombor</button>
+        <button onclick="loadActivity(2)" class="btn-3d bg-green-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🧵 Kotak Manik</button>
+        <button onclick="loadActivity(3)" class="btn-3d bg-fuchsia-500 text-white font-bold py-4 px-2 rounded-xl text-lg">👨‍👩‍👧 Keluarga Jumlah</button>
+        <button onclick="loadActivity(4)" class="btn-3d bg-orange-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🎲 Domino Tambah</button>
+        <button onclick="loadActivity(5)" class="btn-3d bg-amber-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🔢 Kad Petak 100</button>
       </div>
-    </div>`;
-  const sl = document.getElementById('sl');
-  const sayNum = ()=>{ info(`Nombor ${sl.value}.`); speak(`Nombor ${sl.value}`); };
-  const sayDesc= ()=>{
-    const v=+sl.value, prev=v-1, next=v+1;
-    const text = v===11 ? `Sebelas datang selepas sepuluh dan sebelum dua belas.` :
-                v===20 ? `Dua puluh ialah hujung julat; sebelumnya sembilan belas.` :
-                `${v} datang selepas ${prev} dan sebelum ${next}.`;
-    info(text); speak(text);
-  };
-  sl.oninput=()=>{ document.querySelector('#stage .text-5xl').textContent=sl.value; speak(`Nombor ${sl.value}`); info(`Nombor ${sl.value}.`); };
-  document.getElementById('sNum').onclick=sayNum;
-  document.getElementById('sDesc').onclick=sayDesc;
-  info(`Peluncur berada pada ${n}. Klik “Sebut Nombor” atau “Baca Penerangan”.`);
-}
 
-/* -------------------- Aktiviti 2: Kotak Manik (Penambahan) -------------------- */
-function act2(){
-  const sets = [{r:6,b:7},{r:4,b:5},{r:3,b:8},{r:5,b:6}];
-  const pick = sets[step % sets.length];
-  const beadRow = (n, color) => Array.from({length:n}).map(_=> `<div draggable="true" class="w-8 h-8 ${color} rounded-full border-2 ${color==='bg-red-500'?'border-red-600':'border-blue-600'}"></div>`).join('');
-  document.getElementById('stage').innerHTML = `
-    <div class="w-full">
-      <h2 class="text-2xl font-bold text-green-800 mb-2">🧵 Kotak Manik (Penambahan)</h2>
-      <p class="text-slate-600 mb-4">Seret manik merah & biru ke dalam kotak untuk mengira jumlah. Tiada tanda salah/betul — hanya penerangan.</p>
-
-      <div class="grid md:grid-cols-2 gap-6">
-        <div class="card p-5">
-          <h3 class="font-bold mb-2">Manik Tersedia</h3>
-          <div class="flex flex-wrap gap-2 mb-3" id="srcR">${beadRow(pick.r,'bg-red-500')}</div>
-          <div class="flex flex-wrap gap-2" id="srcB">${beadRow(pick.b,'bg-blue-500')}</div>
-        </div>
-        <div class="card p-5">
-          <h3 class="font-bold mb-2">Kotak Pengumpulan</h3>
-          <div id="dz" class="dropzone-dashed rounded-xl min-h-[120px] p-4 flex flex-wrap gap-2 items-center justify-center">
-            <span class="text-slate-400">Seret ke sini</span>
-          </div>
-          <div class="text-center mt-4 text-lg">Jumlah manik: <span id="tot" class="text-2xl font-extrabold">0</span></div>
-        </div>
+      <div class="flex justify-center gap-4 border-t-2 border-slate-100 pt-6">
+        <button onclick="clearActivity()" class="btn-3d bg-slate-400 text-white font-bold py-2 px-6 rounded-full text-lg">🏠 Menu</button>
+        <button onclick="nextActivity()" class="btn-3d bg-indigo-500 text-white font-bold py-2 px-8 rounded-full text-xl">Seterusnya ➡️</button>
       </div>
-    </div>`;
-  info(`Ada ${pick.r} manik merah dan ${pick.b} manik biru. Seret ke kotak untuk lihat jumlahnya.`);
+    </div>
+  </div>
 
-  enableBeadDrag();
-}
-function enableBeadDrag(){
-  const dz=document.getElementById('dz');
-  document.querySelectorAll('#srcR div,#srcB div').forEach(el=>{
-    el.addEventListener('dragstart',e=>{
-      e.dataTransfer.setData('text/plain', e.target.outerHTML);
-    });
-  });
-  dz.ondragover=(e)=>{e.preventDefault(); dz.classList.add('ring-4','ring-blue-300');};
-  dz.ondragleave=()=>dz.classList.remove('ring-4','ring-blue-300');
-  dz.ondrop=(e)=>{e.preventDefault(); dz.classList.remove('ring-4','ring-blue-300');
-    const html=e.dataTransfer.getData('text/plain');
-    if(dz.querySelector('span')) dz.innerHTML='';
-    dz.insertAdjacentHTML('beforeend', html);
-    document.getElementById('tot').textContent = dz.querySelectorAll('div[draggable="true"]').length;
-    info(`Jumlah semasa: ${document.getElementById('tot').textContent} manik.`);
-  };
-}
+  <script>
+    /* --- STANDARD HELPERS (MASTER SYSTEM) --- */
+    let currentActivity = 0;
+    let ttsEnabled = false;
+    let currentInfo = "Pilih aktiviti untuk mula belajar!";
+    
+    function speak(text) { 
+        if (!ttsEnabled || !('speechSynthesis' in window)) return; 
+        window.speechSynthesis.cancel(); 
+        const u = new SpeechSynthesisUtterance(text); u.lang = 'ms-MY'; u.rate = 0.95; u.pitch = 1.05; 
+        const ms = window.speechSynthesis.getVoices().find(v => v.lang === 'ms-MY' || v.lang?.startsWith('ms')); 
+        if (ms) u.voice = ms; 
+        window.speechSynthesis.speak(u); 
+    }
+    
+    function setInfo(text) { 
+        currentInfo = text; const infoEl = document.getElementById('info-text'); 
+        infoEl.style.opacity = 0; setTimeout(() => { infoEl.textContent = text; infoEl.style.opacity = 1; }, 200); 
+    }
+    
+    function speakInfo() { 
+        if (!ttsEnabled) { ttsEnabled = true; document.getElementById('speak-btn').classList.add('bg-green-100', 'text-green-600'); } 
+        speak(currentInfo); 
+    }
 
-/* -------------------- Aktiviti 3: Keluarga Jumlah -------------------- */
-function act3(){
-  const target = [8,9,10,11][step%4];
-  const families = {
-    8: [[5,3],[4,4],[6,2],[7,1]],
-    9: [[4,5],[6,3],[7,2],[8,1]],
-    10:[[6,4],[7,3],[8,2],[9,1]],
-    11:[[5,6],[7,4],[8,3],[9,2]]
-  }[target];
-  const cards = families.map(([a,b])=>`
-    <button class="group card p-4 hover:shadow-xl transition">
-      <div class="text-3xl font-extrabold">${a} + ${b} = ${a+b}</div>
-      <div class="text-slate-500 group-hover:text-slate-700">Jumlah ${a}+${b} diterangkan sebagai ${a} dan ${b} digabungkan.</div>
-    </button>`).join('');
-  document.getElementById('stage').innerHTML = `
-    <div class="w-full">
-      <h2 class="text-2xl font-bold text-fuchsia-800 mb-2">👨‍👩‍👧 Keluarga Jumlah — Sasaran ${target}</h2>
-      <p class="text-slate-600 mb-4">Klik mana-mana kad untuk mendengar penjelasan.</p>
-      <div class="grid md:grid-cols-2 gap-4">${cards}</div>
-    </div>`;
-  info(`Semua ayat tambah yang menghasilkan ${target}.`);
-  document.querySelectorAll('#stage button').forEach(btn=>{
-    btn.onclick=()=>{
-      const t=btn.querySelector('.text-3xl').textContent;
-      info(`Ayat ${t} — kedua-dua nombor digabungkan menjadi ${target}.`);
-      speak(`Ayat ${t}. Jumlahnya ${target}.`);
-      btn.classList.add('bounce');
-      setTimeout(()=>btn.classList.remove('bounce'),500);
-    };
-  });
-}
+    /* --- ROUTER --- */
+    function loadActivity(n) {
+      currentActivity = n;
+      const content = document.getElementById('activity-content');
+      content.style.opacity = 0;
+      
+      setTimeout(() => {
+          if (n === 1) setupActivity1(content);
+          else if (n === 2) setupActivity2(content);
+          else if (n === 3) setupActivity3(content);
+          else if (n === 4) setupActivity4(content);
+          else if (n === 5) setupActivity5(content);
+          content.style.opacity = 1; 
+      }, 200);
+    }
 
-/* -------------------- Aktiviti 4: Domino Tambah (fixed) -------------------- */
-function pipHTML(n, color){
-  const POS={0:[],1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
-  return `<div class="face ${color==='black'?'left':'right'}">` +
-    Array.from({length:9},(_,i)=> (POS[n]||[]).includes(i+1)?`<div class="pip ${color}"></div>`:`<div></div>`).join('') +
-  `</div>`;
-}
-function dominoHTML(l,r){
-  return `<div class="domino" draggable="true" data-left="${l}" data-right="${r}">
-    ${pipHTML(l,'black')}${pipHTML(r,'red')}
-  </div>`;
-}
-function act4(){
-  const set=[[6,2],[5,3],[4,4],[6,3],[5,4],[6,4],[5,5]];
-  const html=set.map(([l,r])=>dominoHTML(l,r)).join('');
-  document.getElementById('stage').innerHTML=`
-    <div class="w-full">
-      <h2 class="text-2xl font-bold text-orange-800 mb-2">🎲 Domino Tambah</h2>
-      <p class="text-slate-600 mb-4">Pip kiri <b>hitam</b>, pip kanan <b class="text-red-600">merah</b>. Seret satu kad ke kotak untuk lihat jumlah.</p>
-      <div class="grid md:grid-cols-2 gap-6">
-        <div class="card p-5">
-          <h3 class="font-bold mb-2">Kad Domino</h3>
-          <div id="domList" class="flex flex-wrap gap-3">${html}</div>
-        </div>
-        <div class="card p-5">
-          <h3 class="font-bold mb-2">Kotak Jumlah</h3>
-          <div id="domDrop" class="dropzone-dashed rounded-xl min-h-[140px] p-5 flex items-center justify-center"
-               ondragover="domOver(event)" ondragleave="domLeave(event)" ondrop="domDrop(event)">
-            <span class="text-slate-400">Seret kad ke sini</span>
-          </div>
-          <div class="text-center mt-4 text-xl">Jumlah pip:
-            <span id="domTot" class="text-2xl font-extrabold">0</span>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  info('Seret mana-mana kad ke kotak. Jumlah dikira terus dari nilai kiri+kanan.');
-  // enable drag
-  document.querySelectorAll('#domList .domino').forEach(el=>{
-    el.addEventListener('dragstart',e=>{
-      e.dataTransfer.setData('text/plain', JSON.stringify({left:+el.dataset.left,right:+el.dataset.right,html:el.outerHTML}));
-      el.classList.add('dragging');
-    });
-    el.addEventListener('dragend',()=>el.classList.remove('dragging'));
-  });
-}
-function domOver(e){e.preventDefault(); e.currentTarget.classList.add('ring-4','ring-indigo-300');}
-function domLeave(e){e.currentTarget.classList.remove('ring-4','ring-indigo-300');}
-function domDrop(e){
-  e.preventDefault();
-  const data=JSON.parse(e.dataTransfer.getData('text/plain'));
-  const dz=document.getElementById('domDrop');
-  dz.classList.remove('ring-4','ring-indigo-300');
-  dz.innerHTML=data.html; // hanya satu kad di dalam
-  const total=(Number.isFinite(data.left)?data.left:0)+(Number.isFinite(data.right)?data.right:0);
-  document.getElementById('domTot').textContent=total;
-  info(`Jumlah pip pada kad ialah ${total}.`);
-  speak(`Jumlah pip ${total}`);
-}
+    function clearActivity() {
+        currentActivity = 0;
+        document.getElementById('activity-content').innerHTML = `<div class="py-10 text-center"><div class="text-8xl mb-6 animate-pulse">👩‍🏫</div><h2 class="text-5xl font-bold text-emerald-600 mb-4">Belajar Menambah</h2><p class="text-2xl text-slate-500 mb-8 font-semibold">Pilih butang di bawah.</p></div>`;
+        setInfo("Pilih aktiviti untuk mula belajar!");
+    }
+    function nextActivity() { let next = currentActivity + 1; if (next > 5) next = 1; loadActivity(next); }
 
-/* -------------------- Aktiviti 5: Kad Petak 100 -------------------- */
-function act5(){
-  const grid = Array.from({length:100},(_,i)=>i+1).map(n=>`
-    <button data-n="${n}" class="w-10 h-10 md:w-12 md:h-12 m-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100">${n}</button>
-  `).join('');
-  document.getElementById('stage').innerHTML=`
-    <div class="w-full">
-      <h2 class="text-2xl font-bold text-amber-800 mb-2">🔢 Kad Petak 100</h2>
-      <p class="text-slate-600 mb-4">Klik mana-mana nombor untuk lihat “lebih satu” secara visual.</p>
-      <div class="card p-4">
-        <div id="grid" class="flex flex-wrap justify-center">${grid}</div>
-      </div>
-    </div>`;
-  info('Klik satu nombor — sistem akan menerangkan “lebih satu”.');
-  document.querySelectorAll('#grid button').forEach(btn=>{
-    btn.onclick=()=>{
-      document.querySelectorAll('#grid button').forEach(b=>b.classList.remove('bg-green-200','border-green-500','text-green-900','bg-blue-200','border-blue-500','text-blue-900'));
-      const n=+btn.dataset.n;
-      const next=n+1>100?null:n+1;
-      btn.classList.add('bg-blue-200','border-blue-500','text-blue-900');
-      if(next){
-        const nb=document.querySelector(`#grid button[data-n="${next}"]`);
-        nb.classList.add('bg-green-200','border-green-500','text-green-900');
-        info(`Lebih satu daripada ${n} ialah ${next}.`);
-        speak(`Lebih satu daripada ${n} ialah ${next}`);
-      }else{
-        info(`${n} ialah nombor terakhir dalam kad ini.`);
-        speak(`${n} ialah nombor terakhir dalam kad ini`);
-      }
-    };
-  });
-}
 
-/* init */
-resetStage();
-</script>
+    /* =========================================
+       LOGIK AKTIVITI (PORTED)
+       ========================================= */
+
+    /* --- 1. Urutan Nombor --- */
+    function setupActivity1(content) {
+        setInfo("Gerakkan peluncur untuk melihat nombor.");
+        const startVal = 11;
+        const ticks = Array.from({length:10},(_,i)=>11+i).map(x=>`<span class="w-10 text-center text-xs font-bold text-slate-400">${x}</span>`).join('');
+        
+        content.innerHTML = `
+            <div class="w-full max-w-4xl text-center">
+                <h3 class="text-3xl font-bold text-sky-600 mb-6">🧭 Urutan Nombor (11-20)</h3>
+                
+                <div class="bg-sky-50 p-8 rounded-2xl border-2 border-sky-200 mb-8">
+                    <input id="slider" type="range" min="11" max="20" value="${startVal}" class="w-full h-4 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-600 mb-4"/>
+                    <div class="flex justify-between px-1">${ticks}</div>
+                </div>
+
+                <div class="text-8xl font-black text-slate-700 mb-8" id="slider-display">${startVal}</div>
+
+                <div class="flex justify-center gap-4">
+                    <button onclick="act1SayNum()" class="btn-3d bg-blue-500 text-white font-bold py-3 px-6 rounded-xl">🔉 Sebut Nombor</button>
+                    <button onclick="act1Explain()" class="btn-3d bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl">📖 Baca Penerangan</button>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('slider').addEventListener('input', (e) => {
+            document.getElementById('slider-display').innerText = e.target.value;
+            speak(e.target.value);
+        });
+    }
+    function act1SayNum(){ 
+        const v = document.getElementById('slider').value; 
+        speak(`Nombor ${v}`); 
+    }
+    function act1Explain(){
+        const v = parseInt(document.getElementById('slider').value);
+        let text = `${v} datang selepas ${v-1} dan sebelum ${v+1}.`;
+        if(v===11) text = "Sebelas ialah nombor selepas sepuluh.";
+        if(v===20) text = "Dua puluh ialah hujung julat ini.";
+        setInfo(text); speak(text);
+    }
+
+    /* --- 2. Kotak Manik --- */
+    function setupActivity2(content) {
+        setInfo("Seret manik ke dalam kotak putus-putus.");
+        // Reset sets randomizer
+        const rCount = 4 + Math.floor(Math.random()*3); 
+        const bCount = 4 + Math.floor(Math.random()*3);
+
+        const beadRow = (n, color, bgClass) => Array.from({length:n}).map(_=> 
+            `<div draggable="true" ondragstart="dragCopyStart(event)" class="w-10 h-10 ${bgClass} rounded-full border-2 border-white shadow-md cursor-grab hover:scale-110 transition-transform"></div>`
+        ).join('');
+
+        content.innerHTML = `
+             <div class="w-full max-w-5xl text-center">
+                <h3 class="text-3xl font-bold text-green-600 mb-6">🧵 Kotak Manik (Kumpul)</h3>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-white border-2 border-slate-200 p-6 rounded-2xl shadow-sm">
+                        <h4 class="font-bold text-slate-500 mb-4">Manik Tersedia</h4>
+                        <div class="flex flex-wrap justify-center gap-2 mb-4">${beadRow(rCount, 'red', 'bg-red-500')}</div>
+                        <div class="flex flex-wrap justify-center gap-2">${beadRow(bCount, 'blue', 'bg-blue-500')}</div>
+                    </div>
+                    
+                    <div class="bg-slate-50 border-4 border-dashed border-slate-300 p-6 rounded-2xl flex flex-col items-center justify-center min-h-[200px]"
+                         ondragover="allowDrop(event)" ondrop="dropClone(event)" ondragleave="leaveDrop(event)">
+                         <div id="bead-target" class="flex flex-wrap justify-center gap-2 w-full h-full content-center">
+                            <span class="text-slate-400 font-bold pointer-events-none">Seret manik ke sini</span>
+                         </div>
+                    </div>
+                </div>
+                
+                <div class="mt-8 text-2xl font-bold bg-green-100 inline-block px-8 py-3 rounded-full border border-green-300 text-green-800">
+                    Jumlah Manik: <span id="bead-total">0</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    window.dragCopyStart = function(e) {
+        e.dataTransfer.setData('text/html', e.target.outerHTML);
+        e.target.classList.add('opacity-50');
+    }
+    window.allowDrop = function(e) { e.preventDefault(); e.currentTarget.classList.add('bg-green-50', 'border-green-400'); }
+    window.leaveDrop = function(e) { e.currentTarget.classList.remove('bg-green-50', 'border-green-400'); }
+    window.dropClone = function(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('bg-green-50', 'border-green-400');
+        
+        // Remove placeholder text if exists
+        const container = document.getElementById('bead-target');
+        if(container.querySelector('span')) container.innerHTML = '';
+        
+        const html = e.dataTransfer.getData('text/html');
+        container.insertAdjacentHTML('beforeend', html);
+        
+        // Clean up cloned element attributes
+        const newEl = container.lastElementChild;
+        newEl.removeAttribute('draggable');
+        newEl.removeAttribute('ondragstart');
+        newEl.classList.remove('opacity-50', 'cursor-grab');
+        newEl.classList.add('animate-popIn'); // imaginary animation class
+        
+        // Reset opacity of source
+        document.querySelectorAll('.opacity-50').forEach(el => el.classList.remove('opacity-50'));
+        
+        // Count
+        const total = container.children.length;
+        document.getElementById('bead-total').innerText = total;
+        speak(total.toString());
+    }
+
+    /* --- 3. Keluarga Jumlah --- */
+    function setupActivity3(content) {
+        const target = 10; // Fixed example for simplicity, or rotate
+        const families = [[5,5], [6,4], [7,3], [8,2], [9,1]];
+        setInfo(`Keluarga ${target}: Klik kad untuk dengar penjelasan.`);
+        
+        content.innerHTML = `
+             <div class="w-full max-w-4xl text-center">
+                <h3 class="text-3xl font-bold text-fuchsia-600 mb-6">👨‍👩‍👧 Keluarga Jumlah: ${target}</h3>
+                <div class="grid md:grid-cols-2 gap-4">
+                    ${families.map(([a,b]) => `
+                        <button onclick="act3Explain(${a},${b},${target})" class="btn-3d bg-white border-slate-200 text-slate-700 p-6 rounded-2xl hover:bg-fuchsia-50 group">
+                            <div class="text-4xl font-extrabold mb-2 group-hover:text-fuchsia-600">${a} + ${b} = ${target}</div>
+                            <div class="text-sm text-slate-400">Klik untuk dengar</div>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    function act3Explain(a,b,t) {
+        const msg = `${a} tambah ${b} menjadi ${t}.`;
+        setInfo(msg); speak(msg);
+    }
+
+    /* --- 4. Domino Tambah --- */
+    function renderPip(n, color) {
+        const POS={0:[],1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}; // Simple 3x3 grid mapping logic
+        let pips = '';
+        for(let i=0; i<9; i++) {
+            if((POS[n]||[]).includes(i)) pips += `<div class="pip ${color}"></div>`;
+            else pips += `<div></div>`;
+        }
+        return `<div class="face ${color==='black'?'left':'right'}">${pips}</div>`;
+    }
+    
+    function renderDomino(l, r) {
+        return `
+            <div class="domino cursor-grab" draggable="true" ondragstart="dragDominoStart(event)" data-l="${l}" data-r="${r}">
+                ${renderPip(l, 'black')}
+                ${renderPip(r, 'red')}
+            </div>
+        `;
+    }
+
+    function setupActivity4(content) {
+        setInfo("Seret kad domino ke kotak untuk kira jumlah.");
+        const dominos = [[3,4], [5,2], [6,1], [4,4], [2,2]];
+        
+        content.innerHTML = `
+            <div class="w-full max-w-5xl text-center">
+                <h3 class="text-3xl font-bold text-orange-600 mb-6">🎲 Domino Tambah</h3>
+                
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-slate-100 p-6 rounded-2xl flex flex-wrap justify-center gap-4 content-start">
+                        ${dominos.map(d => renderDomino(d[0], d[1])).join('')}
+                    </div>
+                    
+                    <div class="bg-orange-50 border-4 border-dashed border-orange-300 p-6 rounded-2xl flex flex-col items-center justify-center min-h-[200px]"
+                         id="domino-drop" ondragover="allowDropDomino(event)" ondrop="dropDomino(event)" ondragleave="leaveDropDomino(event)">
+                        <span class="text-orange-300 font-bold pointer-events-none">Letak Domino Di Sini</span>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-xl text-slate-600 font-bold">
+                    Jumlah Pip: <span id="domino-sum" class="text-4xl text-orange-600 ml-2">0</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    window.dragDominoStart = function(e) {
+        const data = JSON.stringify({ 
+            l: parseInt(e.target.dataset.l), 
+            r: parseInt(e.target.dataset.r),
+            html: e.target.outerHTML 
+        });
+        e.dataTransfer.setData('application/json', data);
+    }
+    window.allowDropDomino = function(e) { e.preventDefault(); e.currentTarget.classList.add('bg-orange-100', 'border-orange-500'); }
+    window.leaveDropDomino = function(e) { e.currentTarget.classList.remove('bg-orange-100', 'border-orange-500'); }
+    window.dropDomino = function(e) {
+        e.preventDefault();
+        const dz = e.currentTarget;
+        dz.classList.remove('bg-orange-100', 'border-orange-500');
+        
+        const data = JSON.parse(e.dataTransfer.getData('application/json'));
+        dz.innerHTML = data.html; // Replace content
+        
+        // Remove drag attributes from dropped item
+        const dropped = dz.firstElementChild;
+        dropped.removeAttribute('draggable');
+        dropped.classList.remove('cursor-grab');
+        dropped.style.transform = 'scale(1.2)';
+        
+        const total = data.l + data.r;
+        document.getElementById('domino-sum').innerText = total;
+        speak(`Jumlahnya ${total}`);
+    }
+
+    /* --- 5. Kad Petak 100 --- */
+    function setupActivity5(content) {
+        setInfo("Klik nombor untuk lihat 'lebih satu'.");
+        
+        let buttonsHTML = '';
+        for(let i=1; i<=100; i++) {
+            buttonsHTML += `<button onclick="clickGrid(${i})" id="gbtn-${i}" class="w-10 h-10 m-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-500 transition-colors">${i}</button>`;
+        }
+
+        content.innerHTML = `
+            <div class="w-full max-w-4xl text-center">
+                <h3 class="text-3xl font-bold text-amber-600 mb-6">🔢 Kad Petak 100</h3>
+                <div class="grid-scroll-container bg-white shadow-inner">
+                    <div class="flex flex-wrap justify-center">
+                        ${buttonsHTML}
+                    </div>
+                </div>
+                <p class="mt-4 text-slate-500 italic">Klik mana-mana nombor.</p>
+            </div>
+        `;
+    }
+    
+    function clickGrid(n) {
+        // Reset Previous
+        document.querySelectorAll('.grid-scroll-container button').forEach(b => {
+            b.className = "w-10 h-10 m-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-500 transition-colors";
+        });
+        
+        // Highlight Current
+        const curr = document.getElementById(`gbtn-${n}`);
+        if(curr) curr.className = "w-10 h-10 m-1 rounded-md border-2 border-blue-500 bg-blue-100 text-blue-700 font-bold transform scale-110 z-10";
+        
+        // Highlight Next
+        if(n < 100) {
+            const next = document.getElementById(`gbtn-${n+1}`);
+            if(next) next.className = "w-10 h-10 m-1 rounded-md border-2 border-green-500 bg-green-100 text-green-700 font-bold transform scale-110 z-10";
+            setInfo(`${n+1} adalah lebih satu daripada ${n}.`);
+            speak(`${n+1} lebih satu daripada ${n}`);
+        } else {
+            setInfo("100 ialah nombor terakhir.");
+            speak("Seratus");
+        }
+    }
+
+  </script>
 </body>
 </html>
